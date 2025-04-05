@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Florr.io合成模拟器</title>
+    <style>
+        .txt {
+            position: absolute;
+            font-weight: bold;
+            color: white; /* 白色填充 */
+            -webkit-text-stroke: 0.7px black; /* 设置描边宽度为0.7px，颜色为黑色 */
+        }
+
+        .box, .but-none, .but-dnt, .but-lvl1, .but-lvl2, .but-lvl3, .but-lvl4, .but-lvl5, .but-lvl6, .but-lvl7, .but-lvl8, .but-lvl9, .conflateBut {
+            position: absolute;
+            font-weight: bold;
+            font-size: 20px;
+            color: white;
+            -webkit-text-stroke: 0.7px black;
+            border-style: solid;
+            border-width: 6px;
+            border-radius: 8px;
+            cursor: pointer;
+            outline: none;
+        }
+        .box {
+            background-color: #db9d5a;
+            border-color: #b17f49;
+            width: 900px;
+            height: 750px;
+            z-index: -1;
+            cursor: default;
+        }
+        .conflateBut {
+            background-color: #db9d5a;
+            border-color: #b17f49;
+            width: 100px;
+            height: 100px;
+            z-index: -1;
+            cursor: default;
+        }
+        .conflateBut:hover {
+            background-color: #dea66a;
+        }
+        .but-none {
+            background-color: #b17f49;
+            border-color: #b17f49;
+        }
+        .but-dnt {
+            background-color: #777777;
+            border-color: #606060;
+        }
+        .but-lvl1 {/*普通*/
+            background-color: #7eef6d;
+            border-color: #66c258;
+        }
+        .but-lvl2 {/*罕见*/
+            background-color: #ffe65d;
+            border-color: #cfba4b;
+        }
+        .but-lvl3 {/*稀有*/
+            background-color: #4d52e3;
+            border-color: #3e42b8;
+        }
+        .but-lvl4 {/*史诗*/
+            background-color: #861fde;
+            border-color: #6d19b4;
+        }
+        .but-lvl5 {/*传奇*/
+            background-color: #de1f1f;
+            border-color: #b41919;
+        }
+        .but-lvl6 {/*神话*/
+            background-color: #1fdbde;
+            border-color: #19b1b4;
+        }
+        .but-lvl7 {/*究极*/
+            background-color: #ff2b75;
+            border-color: #d12360;
+        }
+        .but-lvl8 {/*超级*/
+            background-color: #2bffa3;
+            border-color: #23cf84;
+        }
+        .but-lvl9 {/*唯一*/
+            background-color: #565656;
+            border-color: #474747;
+        }
+    </style>
+    <script>
+        var cardList = [], cardSum = [] ,allCard = [], allCardSum = [], conflateRateProb = [64, 32, 16, 8, 4, 2, 1, 100, "?"], conflateRateTimes = [1, 2, 3, 5, 7, 8, 8, 8, 0];
+        var conflateRate = 0, conflateR = 1, conflateSpeed = 0, areConflate = 0, conflateDire = 0, cradLvl = 1, conflateBoxY = 0, argetConflateBoxY = 0, areConflateSuc = 0;
+        var downKey ={shift: 0, c: 0}, conflateBoxCond = 1;//ConflateBoxCond 0-关闭，1-打开
+        document.addEventListener("keydown", (e) => {
+            if (e.key == "Shift"){  
+                downKey.shift = 1;
+            } 
+            else if (e.key == "c"){
+                downKey.c = 1;
+                chgeConflateBoxCond();
+            }
+        });
+        document.addEventListener("keyup", (e) => {
+            if (e.key == "Shift"){
+                downKey.shift = 0;
+            }
+            else if (e.key == "z"){
+                downKey.c = 0;
+            }
+        });
+
+        function chgeConflateBoxCond() {
+            argetConflateBoxY = 1000 - argetConflateBoxY, conflateBoxCond = !conflateBoxCond;
+            chgeConflateBoxY();
+        }
+
+        function chgeConflateBoxY() {
+            if(Math.abs(conflateBoxY - argetConflateBoxY) > 0.5) {
+                conflateBoxY += (argetConflateBoxY - conflateBoxY) / 10;
+                setUI(0);
+                setTimeout(chgeConflateBoxY, 10);
+            }
+        }
+
+        function mod(x, y) {
+            if(x < 0) {
+                return (x % y + y) % y;
+            }
+            else {
+                return x % y;
+            }
+        }
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function sleep(time) {
+            var timeStamp = new Date().getTime();
+            var endTime = timeStamp + time;
+            while (1) {
+                if (new Date().getTime() >= endTime) {
+                    return;
+                }
+            }
+        }
+
+        function subNewCard(lvl, sum, i, typ) {
+            var card = document.createElement('button');
+            card.className = "but-" + lvl;
+            card.style.width = "75px";
+            card.style.height = "75px";
+            card.style.zIndex = 1;
+            if(typ == 0) {
+                card.id = "card" + i;
+                card.onclick = function() {
+                    dleCard(i);
+                }
+                cardList[i] = card.id;
+                cardSum[i] = sum;
+            }
+            else {
+                card.id = "allCard" + i;
+                card.onclick = function() {
+                    addCard(i);
+                }
+                allCard[i] = card.id;
+                allCardSum[i] = sum;
+            }
+            document.body.appendChild(card);
+            
+            var img = document.createElement('img');
+            img.src = "basic.svg";//设置图片的路径
+            img.style.position = "absolute";
+            img.style.cursor = "pointer";
+            img.style.zIndex = 2;
+            if(typ == 0) {
+                img.id = "cardImg" + i;
+                img.onclick = function() {
+                    dleCard(i);
+                }
+            }
+            else {
+                img.id = "allCardImg" + i;
+                img.onclick = function() {
+                    addCard(i);
+                }
+            }
+            img.style.zIndex = 1;
+            document.body.appendChild(img);
+            
+            var num = document.createElement('h1');
+            num.style.fontSize = "22px";
+            num.style.position = "absolute";
+            num.className = "txt";
+            num.style.transform = "rotate(17.5deg)"
+            num.style.pointerEvents = "none";
+            num.style.zIndex = 3;
+            if(typ == 0) {
+                num.id = "cardNum" + i;
+            }
+            else {
+                num.id = "allCardNum" + i;
+            }
+            document.body.appendChild(num);
+        }
+
+        function newCard(times) {
+            var div = document.getElementById("prompt1");
+            div.textContent = "消耗" + times + "个相同的花瓣来进行一次合成";
+
+            var div = document.getElementById("prompt2");
+            div.textContent = "失败会损失1~" + (times - 1) + "个花瓣";
+
+            for(i = 0; i<times; i++) {
+                subNewCard("lvl" + cradLvl, 10, i, 0);
+            }
+
+            for(i = 0; i < 9; i++) {
+                subNewCard("lvl" + (i + 1), 648, i, 1);
+            }
+        }
+
+        function dleCard(i) {
+            if(cardSum[i] > 0 && areConflate == 0) {
+                var len = cardList.length, sum = 0;
+                for(i = 0; i<len; i++) {
+                    sum += cardSum[i];
+                    cardSum[i] = 0;
+                }
+                allCardSum[cradLvl - 1] += sum;
+                if(areConflateSuc) setUI(2);
+                else setUI(0);
+            }
+        }
+
+        function subAddCard(i, typ) {
+            if(allCardSum[i] > 0 && areConflate == 0) {
+                var len = cardList.length, sum = 0;
+                for(j = 0; j<len; j++) {
+                    sum += cardSum[j];
+                }
+                if(i + 1 != cradLvl) {
+                    for(j = 0; j<len; j++) {
+                        cardSum[j] = 0;
+                    }
+                    allCardSum[cradLvl - 1] += sum;
+                    cradLvl = i + 1, sum = 0;
+                }
+                if(allCardSum[i] < 5) {
+                    len -= 5 - allCardSum[i] % 5;
+                }
+                else {
+                    if(sum < 5) {
+                        len -= sum;
+                    }
+                }
+                allCardSum[i] -= len;
+                for(j = 0; j<len; j++) {
+                    var fnd = cardSum.indexOf(0);
+                    if(fnd != -1) {
+                        cardSum[fnd]++;
+                    }
+                    else {
+                        cardSum[j]++;
+                    }
+                }
+                if(!typ){
+                    setUI(0);
+                }
+            }
+        }
+
+        function addCard(i) {
+            if(!areConflate) {
+                areConflateSuc = 0, conflateR = 1;
+                if(downKey.shift) {
+                    while(allCardSum[i]) {
+                        subAddCard(i, 1);
+                    }
+                    setUI(0);
+                }
+                else {
+                    subAddCard(i, 0);
+                }
+            }
+        }
+
+        function setUI(typ) {
+            var winWidth = window.innerWidth, winHeight = window.innerHeight;
+            var emtHeight = document.body.scrollHeight;
+            var len = cardList.length, sum = 0;
+            if(typ == 0) conflateR += ((1 - mod(conflateRate - conflateDire, 360) / 650) - conflateR) / 3;
+            else if(typ == 1) conflateR += (1 - conflateR) / 10;
+            else if(typ == 2) conflateR += (0 - conflateR) / 5;
+
+            /*合成区的卡片*/
+            for(i = 0; i<len; i++) {
+                var card = document.getElementById(cardList[i]);
+                card.style.left = (Math.sin(i * 2 * Math.PI / len + conflateRate * Math.PI / 180) * 120 * conflateR + winWidth / 2 - 175) + "px";
+                card.style.top = (Math.cos(i * 2 * Math.PI / len + conflateRate * Math.PI / 180) * -120 * conflateR + 190 + conflateBoxY) + "px";
+                if(cardSum[i] == 0) {
+                    card.className = "but-none";
+                }
+                else {
+                    card.className = "but-lvl" + cradLvl;
+                }
+            }
+
+            for(i = 0; i<len; i++) {
+                var img = document.getElementById("cardImg" + i);
+                if(cardSum[i] == 0) {
+                    img.style.display = "none";
+                }
+                else {
+                    img.style.display = "";
+                    img.style.left = (Math.sin(i * 2 * Math.PI / len + conflateRate * Math.PI / 180) * 120 * conflateR + winWidth / 2 - 137.5 - img.width / 2) + "px";
+                    img.style.top = (Math.cos(i * 2 * Math.PI / len + conflateRate * Math.PI / 180) * -120 * conflateR + 227.5 - img.height / 2 + conflateBoxY) + "px";
+                }
+            }
+
+            for(i = 0; i<len; i++) {
+                var num = document.getElementById("cardNum" + i);
+                if(cardSum[i] == 0) {
+                    num.style.display = "none";
+                }
+                else {
+                    num.style.display = "";
+                    num.style.left = (Math.sin(i * 2 * Math.PI / len + conflateRate * Math.PI / 180) * 120 * conflateR + winWidth / 2 - 125 + ((cardSum[i] + '').length) * -0.45) + "px";
+                    num.style.top = (Math.cos(i * 2 * Math.PI / len + conflateRate * Math.PI / 180) * -120 * conflateR + 165 + ((cardSum[i] + '').length) * 2 + conflateBoxY) + "px";
+                    if(cardSum[i] == 1) {
+                        num.textContent = " ";
+                    }
+                    else {
+                        num.textContent = "X" + cardSum[i];
+                    }
+                }
+            }
+
+            /*背包里的卡片*/
+            for(i = 0; i<allCard.length; i++) {
+                var card = document.getElementById(allCard[i]);
+                card.style.left = (winWidth / 2 - 437.5 + i % 9 * 100) + "px";
+                card.style.top = (475 + Math.floor(i / 9) * 100 + conflateBoxY) + "px";
+                if(allCardSum[i] == 0) {
+                    card.className = "but-none";
+                }
+                else {
+                    card.className = "but-lvl" + (i + 1);
+                }
+            }
+
+            for(i = 0; i<allCard.length; i++) {
+                var img = document.getElementById("allCardImg" + i);
+                if(allCardSum[i] == 0) {
+                    img.style.display = "none";
+                }
+                else {
+                    img.style.display = "";
+                    img.style.left = (winWidth / 2 - 400 + i % 9 * 100 - img.width / 2) + "px";
+                    img.style.top = (512.5 + Math.floor(i / 9) * 100 - img.width / 2 + conflateBoxY) + "px";
+                }
+            }
+
+            for(i = 0; i<allCard.length; i++) {
+                var num = document.getElementById("allCardNum" + i);
+                if(allCardSum[i] == 0) {
+                    num.style.display = "none";
+                }
+                else {
+                    num.style.display = "";
+                    num.style.left = (winWidth / 2 - 352.5 + i % 9 * 100 - img.width / 2 + ((allCardSum[i] + '').length) * -0.45) + "px";
+                    num.style.top = (485 + Math.floor(i / 9) * 100 - img.width / 2 + ((allCardSum[i] + '').length) * 2 + conflateBoxY) + "px";
+                    if(allCardSum[i] == 1) {
+                        num.textContent = " ";
+                    }
+                    else {
+                        if(allCardSum[i] == -1) {
+                            num.textContent = "X∞";
+                        }
+                        else {
+                            num.textContent = "X" + allCardSum[i];
+                        }
+                    }
+                }
+            }
+
+            /*各种按钮UI*/
+
+            var flag = 0;
+
+            div = document.getElementById("conflateBox");
+            div.style.top = (conflateBoxY + 7.5) + "px";
+            div.style.left = (winWidth / 2 - 450) + "px";
+            div.style.height = (Math.max(winHeight - 15, 555 + conflateBoxY)) + "px";
+
+            div = document.getElementById("successRate")
+            div.textContent = "成功率：" + conflateRateProb[cradLvl - 1] + "%";
+            div.style.left = (winWidth / 2 + 207.5 - div.offsetWidth / 2) + "px";
+            div.style.top = (210 + conflateBoxY) + "px";
+
+            div = document.getElementById("conflate"), sum = 0;
+            div.style.left = (winWidth / 2 + 175) + "px";
+            div.style.top = (190 + conflateBoxY) + "px";
+            for(i = 0; i<len; i++) {
+                sum += cardSum[i];
+                if(!cardSum[i]) flag = 1;
+            }
+            if(sum >= 5 && !flag) {
+                div.className = ("but-lvl" + (cradLvl + 1));
+            }
+            else {
+                div.className = "but-dnt";
+                if(sum == 0) {
+                    div = document.getElementById("successRate");
+                    div.textContent = "成功率：?%";
+                    div = document.getElementById("conflate");
+                }
+            }
+            if(cradLvl > 8) {
+                div.className = "but-dnt";
+                div.textContent = "合成";
+            }
+            else if(cradLvl == 8) {
+                div.textContent = "锻造";
+            }
+            else {
+                div.textContent = "合成";
+            }
+
+            div = document.getElementById("conflateBut");
+            div.style.left = (10) + "px";
+            div.style.top = (winHeight - 110) + "px";
+
+            div = document.getElementById("conflateButImg");
+            div.style.left = (57.5 - div.width / 2) + "px";
+            div.style.top = (winHeight - div.height - 7) + "px";
+
+            div = document.getElementById("titleText");
+            div.style.left = (winWidth / 2 - div.offsetWidth / 2) + "px";
+            div.style.top = (-5 + conflateBoxY) + "px";
+
+            div = document.getElementById("prompt1");
+            div.style.left = (winWidth / 2 - div.offsetWidth / 2) + "px";
+            div.style.top = (375 + conflateBoxY) + "px";
+
+            div = document.getElementById("prompt2");
+            if(sum > 0) {
+                div.style.display = "";
+                div.style.left = (winWidth / 2 - div.offsetWidth / 2) + "px";
+                div.style.top = (405 + conflateBoxY) + "px";
+            }
+            else {
+                div.style.display = "none";
+            }
+
+            /*水印*/
+            div = document.getElementById("byText1");
+            div.style.left = (winWidth / 2 - div.offsetWidth / 2 - 102.5) + "px";
+            div = document.getElementById("byText2");
+            div.style.left = (winWidth / 2 - div.offsetWidth / 2 + 25) + "px";
+            div = document.getElementById("byText3");
+            div.style.left = (winWidth / 2 - div.offsetWidth / 2) + "px";
+        }
+
+        function endConflate() {
+            var len = cardList.length;
+            for(i = 0; i<len; i++) {
+                cardSum[i] = 1;
+            }
+            for(i = 0; i<randomInt(1, len-1); i++) {
+                while(1) {
+                    var j = randomInt(0, len - 1);
+                    if(cardSum[j] == 1) {
+                        cardSum[j] = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function toInitialRate() {
+            conflateSpeed += (0 - conflateSpeed) / 15;
+            conflateRate += conflateSpeed;
+            setUI(1);
+            if(conflateSpeed > 0.05) {
+                setTimeout(toInitialRate, 15);
+                return;
+            }
+            else {
+                areConflate = 0, conflateSpeed = 0, conflateDire = conflateRate;
+                setUI(0);
+                return;
+            }
+        }
+
+        function toInitialRate2(sucCardSum, loseCardSum) {
+            conflateSpeed += (0 - conflateSpeed) / 15;
+            conflateRate += conflateSpeed;
+            setUI(2);
+            if(conflateR > 0.25) {
+                setTimeout(function() {
+                  toInitialRate2(sucCardSum, loseCardSum);
+                }, 15);
+                return;
+            }
+            else {
+                areConflate = 0, conflateSpeed = 0, conflateR = 0, areConflateSuc = 1;
+                var len = cardList.length, sum = 0;
+                for(i = 0; i<len; i++) {
+                    sum += cardSum[i];
+                    cardSum[i] = 0;
+                }
+                cardSum[len - 1] = sucCardSum, allCardSum[cradLvl - 1] += loseCardSum;
+                cradLvl++;
+                setUI(2);
+                return;
+            }
+        }
+        
+        function conflate() {
+            var x = randomInt(conflateRateTimes[cradLvl - 1] * 14, conflateRateTimes[cradLvl - 1] * 18);
+            if(areConflate == 1 || cradLvl > 8) {
+                return;
+            }
+            var len = cardList.length, sum = 0;
+            for(i = 0; i<len; i++) {
+                sum += cardSum[i];
+            }
+            if(sum >= len) conflateAaimation(x);
+        }
+
+        function conflateAaimation(x) {
+            areConflate = 1;
+            if(x == 0) {
+                var minn = cardSum.reduce((accumulator, currentValue) => accumulator + currentValue), sum = 0;
+                while(minn >= 5) {
+                    if(randomInt(0, 100) <= conflateRateProb[cradLvl - 1]) {
+                        sum++, minn -= 5;
+                    }
+                    else {
+                        minn -= randomInt(1, 4);
+                    }
+                }
+                if(sum) {
+                    toInitialRate2(sum, minn);
+                }
+                else {
+                    endConflate();
+                    toInitialRate();
+                }
+                return;
+            }
+            conflateRate = (conflateRate + conflateSpeed) % 360;
+            conflateSpeed += (17 - conflateSpeed) / 20;
+            setUI(0);
+            setTimeout(() => {
+                conflateAaimation(x - 1);
+            }, 15); // y秒
+        }
+
+        window.onresize = function () {
+            if(areConflateSuc) setUI(2);
+            else setUI(0);
+        };
+        window.onload = setUI;
+    </script>
+</head>
+<body style="background-color: #db9d5a; overflow:Scroll; overflow-x:hidden; overflow-y:hidden;">
+    <button id="conflate" onclick="conflate()" style="z-index: 2; ">合成</button>
+    <h3 id="successRate" class="txt" style="z-index: 2; "></h3>
+    <h1 id="titleText" class="txt" style="z-index: 2; ">合成</h1>
+    <h3 id="prompt1" class="txt" style="z-index: 2; "></h3>
+    <h4 id="prompt2" class="txt" style="z-index: 2; "></h4>
+    <h1 class="txt" id="byText1" style="z-index: -1; top: 0px; ">by</h1>
+    <a href="https://github.com/HXB-XXB" id="byText2" class="txt" style="z-index: -1; text-decoration: none; font-size: 35px; top: 20px; " target="_blank">吸吸冰/HXB</a>
+    <h1 class="txt" id="byText3" style="z-index: -1; top: 50px; ">——2025/4/4</h1>
+    <button id="conflateBox" class="box" style="z-index: 1; "></button>
+    <button id="conflateBut" class="conflateBut" style="z-index: 0; " onclick="chgeConflateBoxCond()"></button>
+    <img id="conflateButImg" src="../game/conflateButton.svg" style="position: absolute; width: 107px; height: 107px; z-index: 0; pointer-events: none;" />
+    <script>
+        newCard(5);
+    </script>
+</html>
