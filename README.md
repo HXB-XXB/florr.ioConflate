@@ -1,5 +1,0 @@
-＃ florr.io合成模拟器
-
-你好！
-我是GitHub的新手，这是我的第一个GitHub项目。
-这个项目是一个通过模仿[florr.io](https://florr.io)游戏机制制作的合成模拟器
